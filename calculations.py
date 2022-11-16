@@ -1,12 +1,6 @@
 import datetime as dt
 
 
-class TimeLineStatus:
-    today = dt.date.today()
-    yesterday = today - dt.timedelta(days=1)
-    five_day_ago = today - dt.timedelta(days=5)
-
-
 def string_to_date(string: str) -> dt.date:
     """
     Преобразование даты из формата DD.MM.YYYY в экземпляр класса datetime.
@@ -50,23 +44,12 @@ def list_to_str(lst: list) -> str:
     return result
 
 
-def qt_json_convert(today_list, yesterday_list, last_5_day_list, rest_list):
+def get_text(lst: list, format: int = 0) -> str:
     """
-    Пакует данные в json-like формат.
+    Получая на входе список возвращает текст с каждым элементом на новой
+    строке.
     """
-    result_dict = {}
-    result_dict['today'] = today_list
-    result_dict['yesterday'] = yesterday_list
-    result_dict['last_5_day'] = last_5_day_list
-    result_dict['rest'] = rest_list
-    return result_dict
 
-
-# Не нравится как рботает функция. Должна принимать не словарь, а список.
-def get_text(id_dict: dict, key: str, format: int = 0) -> str:
-    """Получая на входе словарь и валидный ключ возвращает текст с каждым
-    элементом на новой строке."""
-    int_list = id_dict.get(key)
-    str_list = list_convertor(int_list, format)
+    str_list = list_convertor(lst, format)
     str_text = list_to_str(str_list)
     return str_text
