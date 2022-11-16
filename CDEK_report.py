@@ -38,4 +38,4 @@ def cdek_get_report(file):
                 case rest:
                     rest_list.append(element[1])
     result_list = (today_list, yesterday_list, last_5_day_list, rest_list)
-    return(result_list)
+    return result_list
