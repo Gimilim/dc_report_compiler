@@ -117,3 +117,4 @@ if __name__ == "__main__":
     sys.exit(app.exec())
 
 # pyside6-uic design.ui -o design.py
+# Изменения для тестовой ветки
