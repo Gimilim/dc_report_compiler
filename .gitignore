@@ -130,3 +130,6 @@ dmypy.json
 
 # Файлы экселя
 *.xlsx
+
+# Файл повторов
+repeats_reports.txt
