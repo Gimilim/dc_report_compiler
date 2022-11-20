@@ -8,7 +8,7 @@ from PySide6.QtWidgets import QApplication, QMainWindow
 
 import calculations as calc
 import CDEK_report as cd
-from design6 import Ui_MainWindow
+from design9 import Ui_MainWindow
 
 
 class MainProgram(QMainWindow):
@@ -16,52 +16,40 @@ class MainProgram(QMainWindow):
         super(MainProgram, self).__init__()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
+        self.load_btn_connection()
 
-        # Кнопка загрузки файла.
-        self.ui.btn_load.clicked.connect(lambda: self.load_file())
+        # Заполняем комбобокс ТК.
+        tk_list = ('CDEK', 'Shiptor', 'Boxberry', 'Grastin')
+        self.ui.cb_tk.addItems(tk_list)
 
-        # Кнопка копирования результата (нужно переработать)
-        # self.ui.btn_copy.clicked.connect(lambda: self.copy_orders())
-
-        # Заполняем комбобокс.
+        # Заполняем комбобокс файлов.
         listOfFiles = os.listdir('.')
         pattern = "*.xlsx"
         for entry in listOfFiles:
             if fnmatch.fnmatch(entry, pattern):
-                self.ui.comboBox.addItem(entry)
+                self.ui.cb_file.addItem(entry)
 
         # Заполняем текущую дату.
         self.today_date = dt.datetime.now().date()
         text_today_date = self.today_date.strftime('%d.%m.%Y')
         self.ui.le_date.setText(text_today_date)
 
+        # test
+        self.some_func('result')
+        # test
+
     def load_file(self) -> None:
         """Заполняет колонки с ID"""
-        # Считываем выбранный файл из comboBox.
-        selected_file = self.ui.comboBox.currentText()
+        # Считываем выбранный файл из cb_file.
+        selected_file = self.ui.cb_file.currentText()
 
         # Получаем весь список ID CDEK'а.
         cd_list = cd.cdek_get_id_list(selected_file)
 
-        # Заполняем данные по файлу.
-        # Определяем дату отчета.
-        cdek_report_date_from_file = self.ui.comboBox.currentText()[19:29]
-        sdek_report_day = int(cdek_report_date_from_file[8:10])
-        sdek_report_month = int(cdek_report_date_from_file[5:7])
-        sdek_report_year = int(cdek_report_date_from_file[0:4])
-        sdek_report_date = dt.date(
-            sdek_report_year, sdek_report_month, sdek_report_day
-        )
-        text_sdek_report_date = sdek_report_date.strftime('%d.%m.%Y')
-        self.ui.le_report_date.setText(text_sdek_report_date)
-        if self.today_date != sdek_report_date:
-            self.ui.le_report_date.setStyleSheet('background-color: red')
-        else:
-            self.ui.le_report_date.setStyleSheet('background-color: green')
-
-        # Определяем ТК.
-        if 'CDEK' in self.ui.comboBox.currentText():
-            self.ui.le_dc.setText('CDEK')
+        report_date = self.get_file_date(selected_file)
+        date_format = '%d.%m.%Y %H:%M:%S'
+        text_report_date = report_date.strftime(date_format)
+        self.ui.le_report_date.setText(text_report_date)
 
         # Формируем и выводим список ID.
         format_number = 0
@@ -76,59 +64,137 @@ class MainProgram(QMainWindow):
         self.ui.le_uplouaded.setText(f'Всего: {uploaded_amount}')
 
         # Проверяем наличие файла отчета за дату и создаем его если нет.
+        # Тут нужно проверять повторы и создавать файл для каждой ТК
         report_file = 'repeats_reports.txt'
         repeats_list = []
         if not (os.path.exists(report_file)):
             with open(report_file, 'w') as opened_file:
+                opened_file.write(f'{text_report_date}\n')
                 opened_file.write(uplouded_text)
-            self.ui.pe_log.setPlainText(f'Создан файл: {report_file}')
+            log_text = f'Создан файл: {report_file}'
+            self.log_updater(log_text)
         else:
+            date_from_file = ''
             with open(report_file, 'r') as opened_file:
                 file_list = []
                 for line in opened_file:
                     line = line.rstrip('\n')
-                    file_list.append(int(line))
-            for element in cd_list:
-                if element in file_list:
-                    repeats_list.append(element)
-            if repeats_list == []:
+                    try:
+                        file_list.append(int(line))
+                    except Exception:
+                        date_from_file = dt.datetime.strptime(
+                            line, date_format
+                        )
+                        continue
+            if date_from_file == '' or date_from_file < report_date:
+                for element in cd_list:
+                    if element in file_list:
+                        repeats_list.append(element)
                 with open(report_file, 'w') as opened_file:
+                    opened_file.write(f'{text_report_date}\n')
+
                     writing_text = calc.get_text(cd_list)
                     opened_file.write(writing_text)
-                # в коде выше есть ошибка. Повторы неправильно перезаписываются
 
-        # Заполняем данные по повторам.
-        repeats_text = calc.get_text(repeats_list, format_number)
-        self.ui.pe_repeats.setPlainText(repeats_text)
+                repeats_text = calc.get_text(repeats_list, format_number)
+                self.ui.pe_repeats.setPlainText(repeats_text)
 
-        repeats_amount = len(repeats_text.splitlines())
-        self.ui.le_repeats.setText(f'Всего: {repeats_amount}')
+                repeats_amount = len(repeats_text.splitlines())
+                self.ui.le_repeats.setText(f'Всего: {repeats_amount}')
 
-        # Заполняем данные результата.
-        uplouded_set = set(cd_list)
-        repeats_set = set(repeats_list)
-        result_set = uplouded_set - repeats_set
-        result_list = list(result_set)
-        result_text = calc.get_text(result_list, format_number)
-        self.ui.pe_result.setPlainText(result_text)
+                # Заполняем данные результата.
+                uplouded_set = set(cd_list)
+                repeats_set = set(repeats_list)
+                result_set = uplouded_set - repeats_set
+                result_list = list(result_set)
+                result_text = calc.get_text(result_list, format_number)
+                self.ui.pe_result.setPlainText(result_text)
+                result_amount = len(result_text.splitlines())
+                self.ui.le_result.setText(f'Всего: {result_amount}')
+            else:
+                log_text = 'Данные в выбранном отчете устарели!'
+                self.log_updater(log_text)
+                self.ui.pe_repeats.clear()
+                self.ui.le_repeats.clear()
+                self.ui.pe_result.clear()
+                self.ui.le_result.clear()
 
-        # Считаем и выводим количество заказов
-
-        # Выводим количество ID из таблицы..
-        # result_amount = ...
-        #
-        # self.ui.le_result.setText(f'Всего: {result_amount}')
-
-        # Заполняем лог.
-        # pass
-        # self.ui.pe_log.setPlainText(...)
-
-    def copy_orders(self):
+    def copy_uploaded(self) -> None:
         """
-        Функция для копирования всего текста итогового списка ID
+        Функция для копирования загруженных ID.
+        """
+        text = self.ui.pe_uplouded.toPlainText()
+        pyperclip.copy(text)
+
+        return None
+
+    def copy_repeats(self) -> None:
+        """
+        Функция для копирования повторных ID.
+        """
+        text = self.ui.pe_repeats.toPlainText()
+        pyperclip.copy(text)
+
+        return None
+
+    def copy_result(self) -> None:
+        """
+        Функция для копирования ID без повторов.
         """
         text = self.ui.pe_result.toPlainText()
         pyperclip.copy(text)
+
+        return None
+
+    def log_updater(self, text: str) -> None:
+        """
+        Функция для обновления информации в логе
+        """
+        time = dt.datetime.now().time().strftime('%H:%M:%S')
+        self.ui.pe_log.appendPlainText(f'{time} {text}')
+
+        return None
+
+    def log_cleaner(self) -> None:
+        """
+        Функция для очистки сообщений лога.
+        """
+        self.ui.pe_log.clear()
+
+        return None
+
+    def load_btn_connection(self) -> None:
+        # Кнопка загрузки файла.
+        self.ui.btn_load.clicked.connect(self.load_file)
+
+        # Кнопки копирования текста из поля.
+        self.ui.btn_copy_uploaded.clicked.connect(self.copy_uploaded)
+        self.ui.btn_copy_repeats.clicked.connect(self.copy_repeats)
+        self.ui.btn_copy_result.clicked.connect(self.copy_result)
+
+        # Кнопка очистки лога.
+        self.ui.btn_clean_log.clicked.connect(self.log_cleaner)
+
+        return None
+
+    @staticmethod
+    def get_file_date(file_name) -> dt:
+        file_name_list = file_name.replace(".xlsx", "").split(" ")
+
+        date_time_str = file_name_list[-2:]
+        date_str = date_time_str[0]
+        time_str = ":".join(date_time_str[1].split("_")[:3])
+        file_date = dt.datetime.strptime(
+            f"{date_str} {time_str}", "%Y-%m-%d %H:%M:%S"
+        )
+
+        return file_date
+
+    def some_func(self, name) -> None:
+        test_str = f'self.ui.pe_{name}.setPlainText("test")'
+        # self.ui.pe_result.setPlainText(result_text)
+        eval(test_str)
+        return None
 
 
 if __name__ == "__main__":
@@ -139,3 +205,5 @@ if __name__ == "__main__":
 
 # pyside6-uic design.ui -o design.py
 # Изменения для тестовой ветки
+# Исправить очептки с upload (и вообще это должно быть download)
+# self.ui.le_report_date.setStyleSheet('background-color: green')
