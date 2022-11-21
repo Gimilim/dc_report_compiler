@@ -16,27 +16,12 @@ class MainProgram(QMainWindow):
         super(MainProgram, self).__init__()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-        self.load_btn_connection()
 
-        # Заполняем комбобокс ТК.
-        tk_list = ('CDEK', 'Shiptor', 'Boxberry', 'Grastin')
-        self.ui.cb_tk.addItems(tk_list)
+        # Папка с excel отчетами.
+        self.dir = '.'
 
-        # Заполняем комбобокс файлов.
-        listOfFiles = os.listdir('.')
-        pattern = "*.xlsx"
-        for entry in listOfFiles:
-            if fnmatch.fnmatch(entry, pattern):
-                self.ui.cb_file.addItem(entry)
-
-        # Заполняем текущую дату.
-        self.today_date = dt.datetime.now().date()
-        text_today_date = self.today_date.strftime('%d.%m.%Y')
-        self.ui.le_date.setText(text_today_date)
-
-        # test
-        self.some_func('result')
-        # test
+        # Заполняем часть полей при запуске.
+        self.first_load_setup()
 
     def load_file(self) -> None:
         """Заполняет колонки с ID"""
@@ -46,78 +31,131 @@ class MainProgram(QMainWindow):
         # Получаем весь список ID CDEK'а.
         cd_list = cd.cdek_get_id_list(selected_file)
 
-        report_date = self.get_file_date(selected_file)
+        # Заполняем дату отчета.
+        excel_report_date = self.get_file_date(selected_file)
         date_format = '%d.%m.%Y %H:%M:%S'
-        text_report_date = report_date.strftime(date_format)
+        text_report_date = excel_report_date.strftime(date_format)
         self.ui.le_report_date.setText(text_report_date)
 
-        # Формируем и выводим список ID.
+        # Проверяем нужно ли отбрасывать первые 2 символа ID.
         format_number = 0
         if self.ui.chb_id10.isChecked():
             format_number = 2
 
-        # Заполняем данные из таблицы.
+        # Выводим ID из таблицы.
         uplouded_text = calc.get_text(cd_list, format_number)
         self.ui.pe_uplouded.setPlainText(uplouded_text)
 
+        # Выводим количество ID из таблицы.
         uploaded_amount = len(uplouded_text.splitlines())
         self.ui.le_uplouaded.setText(f'Всего: {uploaded_amount}')
 
-        # Проверяем наличие файла отчета за дату и создаем его если нет.
-        # Тут нужно проверять повторы и создавать файл для каждой ТК
+        # Берем полный ID из таблицы для внесения в repeats_report.
+        full_id_text = calc.get_text(cd_list)
+
+        # Проверяем файл отчёта.
         report_file = 'repeats_reports.txt'
         repeats_list = []
         if not (os.path.exists(report_file)):
-            with open(report_file, 'w') as opened_file:
-                opened_file.write(f'{text_report_date}\n')
-                opened_file.write(uplouded_text)
+            # Если файла отчёта нет - создаем его и заполняем ID из таблицы.
+            self.update_report_file(
+                report_file, text_report_date, full_id_text
+            )
+
+            # Пишем лог.
             log_text = f'Создан файл: {report_file}'
             self.log_updater(log_text)
         else:
-            date_from_file = ''
-            with open(report_file, 'r') as opened_file:
-                file_list = []
-                for line in opened_file:
-                    line = line.rstrip('\n')
-                    try:
-                        file_list.append(int(line))
-                    except Exception:
-                        date_from_file = dt.datetime.strptime(
-                            line, date_format
-                        )
-                        continue
-            if date_from_file == '' or date_from_file < report_date:
+            # Если файл отчёта есть - считываем дату.
+            file_data = self.get_file_data(report_file)
+            date_from_file = file_data.get('date')
+
+            # Проверяем какие данные более свежие.
+            if date_from_file < excel_report_date:
+                # Если данные в файлее отчета старее, чем данные в таблице, то
+                # Ищем повторы.
+                id_list = file_data.get('id_list')
                 for element in cd_list:
-                    if element in file_list:
+                    if element in id_list:
                         repeats_list.append(element)
-                with open(report_file, 'w') as opened_file:
-                    opened_file.write(f'{text_report_date}\n')
 
-                    writing_text = calc.get_text(cd_list)
-                    opened_file.write(writing_text)
+                # Замещаем данные в файле отчета данными из таблицы.
+                self.update_report_file(
+                    report_file, text_report_date, full_id_text
+                )
 
+                # Выводим повторяющиеся ID.
                 repeats_text = calc.get_text(repeats_list, format_number)
                 self.ui.pe_repeats.setPlainText(repeats_text)
 
+                # Выводим количество повторяющихся ID.
                 repeats_amount = len(repeats_text.splitlines())
                 self.ui.le_repeats.setText(f'Всего: {repeats_amount}')
 
-                # Заполняем данные результата.
-                uplouded_set = set(cd_list)
-                repeats_set = set(repeats_list)
-                result_set = uplouded_set - repeats_set
-                result_list = list(result_set)
+                # Выводим ID без повторов.
+                result_list = self.list_difference(cd_list, repeats_list)
                 result_text = calc.get_text(result_list, format_number)
                 self.ui.pe_result.setPlainText(result_text)
+
+                # Выводим количество ID без повторов.
                 result_amount = len(result_text.splitlines())
                 self.ui.le_result.setText(f'Всего: {result_amount}')
+
+                # Пишем лог.
+                log_text = f'Загружены данные из файла {selected_file}'
+                self.log_updater(log_text)
             else:
+                # Если актуальные файлы уже были в отчете.
+                # Пишем лог.
                 log_text = 'Данные в выбранном отчете устарели!'
                 self.log_updater(log_text)
+
+                # Очищаем повторяющиеся и неповторяющиеся ID и их количество.
                 self.ui.pe_repeats.clear()
                 self.ui.le_repeats.clear()
                 self.ui.pe_result.clear()
                 self.ui.le_result.clear()
+
+    @staticmethod
+    def get_file_data(file_name: str) -> dict:
+        """
+        Функция для чтения файлов, где первой строчкой идет дата, а в каждой
+        последующей строчке ID
+        """
+        date_format = '%d.%m.%Y %H:%M:%S'
+        with open(file_name, 'r') as opened_file:
+            id_list = []
+            for line in opened_file:
+                line = line.rstrip('\n')
+                try:
+                    id_list.append(int(line))
+                except Exception:
+                    date_from_file = dt.datetime.strptime(line, date_format)
+                    continue
+        result = {'date': date_from_file, 'id_list': id_list}
+        return result
+
+    @staticmethod
+    def update_report_file(file_name: str, text_date: str, text: str) -> None:
+        """
+        Функция для записи в первую строчку файла даты, а далее построчно ID.
+        """
+        with open(file_name, 'w') as opened_file:
+            opened_file.write(f'{text_date}\n')
+            opened_file.write(text)
+        return None
+
+    @staticmethod
+    def list_difference(lst1: list, lst2: list) -> list:
+        """
+        Считает разницу между двумя списками с неповторяющимися элементами.
+        """
+        set1 = set(lst1)
+        set2 = set(lst2)
+        result_set = set1 - set2
+        result_list = list(result_set)
+
+        return result_list
 
     def copy_uploaded(self) -> None:
         """
@@ -175,6 +213,9 @@ class MainProgram(QMainWindow):
         # Кнопка очистки лога.
         self.ui.btn_clean_log.clicked.connect(self.log_cleaner)
 
+        # Подключение combobox'а для фильтра ТК.
+        self.ui.cb_tk.activated.connect(self.cb_dc_pattern_filter)
+
         return None
 
     @staticmethod
@@ -196,6 +237,58 @@ class MainProgram(QMainWindow):
         eval(test_str)
         return None
 
+    def cb_dc_pattern_filter(self) -> None:
+        """
+        Считывает выбранный текст из ComboBox'а выбор ТК и передает pattern в
+        cb_file_add_filtered_items для заполнения списка файлов.
+        """
+        match self.ui.cb_tk.currentText():
+            case 'CDEK':
+                pattern = "CDEK*.xlsx"
+            case 'Shiptor':
+                pattern = 'Shiptor'
+            case 'Boxberry':
+                pattern = 'Boxberry'
+            case 'Grastin':
+                pattern = 'Grastin'
+        self.cb_file_add_filtered_items(pattern)
+
+        return None
+
+    def cb_file_add_filtered_items(self, pattern) -> None:
+        """
+        Получая на входе паттерн заполняет файлы в ComboBox файлов,
+        соответствующие данному фильтру.
+        """
+        listOfFiles = os.listdir(self.dir)
+        self.ui.cb_file.clear()
+        for entry in listOfFiles:
+            if fnmatch.fnmatch(entry, pattern):
+                self.ui.cb_file.addItem(entry)
+
+        return None
+
+    def first_load_setup(self) -> None:
+        """
+        Заполнение некоторых полей при первом запуске.
+        """
+        # Заполняем ComboBox ТК.
+        tk_list = ('CDEK', 'Shiptor', 'Boxberry', 'Grastin')
+        self.ui.cb_tk.addItems(tk_list)
+
+        # Заполняем текущую дату.
+        today_date = dt.datetime.now().date()
+        text_today_date = today_date.strftime('%d.%m.%Y')
+        self.ui.le_date.setText(text_today_date)
+
+        # Первично заполняем ComboBox файлами.
+        self.cb_dc_pattern_filter()
+
+        # Подключаем кнопки.
+        self.load_btn_connection()
+
+        return None
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
@@ -203,7 +296,17 @@ if __name__ == "__main__":
     window.show()
     sys.exit(app.exec())
 
+# Для комплирования дизайна.
 # pyside6-uic design.ui -o design.py
-# Изменения для тестовой ветки
-# Исправить очептки с upload (и вообще это должно быть download)
+
+# Для компилирования .exe файла.
+# pyinstaller --onefile  --noconsole main.py
+
+# Для изменения цвета задника.
 # self.ui.le_report_date.setStyleSheet('background-color: green')
+
+# todo:
+# Исправить очептки с upload (и вообще это должно быть download).
+# Добавить кнопку открыть файл повторов.
+# Добавить кнопку формирования внутренних номеров сдека днем и вечером.
+# Перераюотать логику с проверкой файла на наличие.
