@@ -3,11 +3,11 @@ import json
 import pandas as pd
 
 
-def cdek_get_id_list(file):
+def cdek_get_id_list(file_name: str) -> list:
     result_list = []
 
     # Получаем нужный фрагмент таблицы.
-    result_table = pd.read_excel(file, usecols='A:C', converters={1: int})
+    result_table = pd.read_excel(file_name, usecols='A:C', converters={1: int})
     # Преобразуем таблицу в список.
     pd_json = result_table.to_json(orient='split')
     # Преобразуем список в json (dict).

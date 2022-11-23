@@ -8,7 +8,7 @@ from PySide6.QtWidgets import QApplication, QMainWindow
 
 import calculations as calc
 import CDEK_report as cd
-from design9 import Ui_MainWindow
+from design10 import Ui_MainWindow
 
 
 class MainProgram(QMainWindow):
@@ -44,11 +44,11 @@ class MainProgram(QMainWindow):
 
         # Выводим ID из таблицы.
         uplouded_text = calc.get_text(cd_list, format_number)
-        self.ui.pe_uplouded.setPlainText(uplouded_text)
+        self.ui.pe_uploaded.setPlainText(uplouded_text)
 
         # Выводим количество ID из таблицы.
         uploaded_amount = len(uplouded_text.splitlines())
-        self.ui.le_uplouaded.setText(f'Всего: {uploaded_amount}')
+        self.ui.le_uploaded.setText(f'Всего: {uploaded_amount}')
 
         # Берем полный ID из таблицы для внесения в repeats_report.
         full_id_text = calc.get_text(cd_list)
@@ -161,7 +161,7 @@ class MainProgram(QMainWindow):
         """
         Функция для копирования загруженных ID.
         """
-        text = self.ui.pe_uplouded.toPlainText()
+        text = self.ui.pe_uploaded.toPlainText()
         pyperclip.copy(text)
 
         return None
@@ -203,7 +203,7 @@ class MainProgram(QMainWindow):
 
     def load_btn_connection(self) -> None:
         # Кнопка загрузки файла.
-        self.ui.btn_load.clicked.connect(self.load_file)
+        self.ui.btn_upload.clicked.connect(self.load_file)
 
         # Кнопки копирования текста из поля.
         self.ui.btn_copy_uploaded.clicked.connect(self.copy_uploaded)
@@ -306,7 +306,6 @@ if __name__ == "__main__":
 # self.ui.le_report_date.setStyleSheet('background-color: green')
 
 # todo:
-# Исправить очептки с upload (и вообще это должно быть download).
-# Добавить кнопку открыть файл повторов.
-# Добавить кнопку формирования внутренних номеров сдека днем и вечером.
-# Перераюотать логику с проверкой файла на наличие.
+# Добавить кнопку формирования внутренних номеров сдека (в конце дня).
+# Переработать логику с проверкой файла на наличие.
+# обработка заказов 00ФР-001925

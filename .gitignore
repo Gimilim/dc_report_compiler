@@ -133,3 +133,6 @@ dmypy.json
 
 # Файл повторов
 repeats_reports.txt
+
+# Тестовый полигон
+test.py
