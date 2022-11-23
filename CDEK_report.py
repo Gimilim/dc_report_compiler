@@ -4,10 +4,15 @@ import pandas as pd
 
 
 def cdek_get_id_list(file_name: str) -> list:
-    result_list = []
+    dc_id_list = []
+    id_list = []
 
     # Получаем нужный фрагмент таблицы.
-    result_table = pd.read_excel(file_name, usecols='A:C', converters={1: int})
+    result_table = pd.read_excel(
+        file_name,
+        usecols='A:B',
+        converters={0: str, 1: (lambda x: str(x).replace(' ', ''))},
+    )
     # Преобразуем таблицу в список.
     pd_json = result_table.to_json(orient='split')
     # Преобразуем список в json (dict).
@@ -18,5 +23,10 @@ def cdek_get_id_list(file_name: str) -> list:
     # Формируем список ID из таблицы
     for element in data_list:
         if element[1] is not (None):
-            result_list.append(element[1])
-    return result_list
+            dc_id_list.append(element[0])
+            if '00ФР' not in element[1]:
+                id_list.append(element[1])
+
+    result_dict = {'dc_id_list': dc_id_list, 'id_list': id_list}
+
+    return result_dict

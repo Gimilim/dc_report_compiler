@@ -8,7 +8,7 @@ from PySide6.QtWidgets import QApplication, QMainWindow
 
 import calculations as calc
 import CDEK_report as cd
-from design10 import Ui_MainWindow
+from design11 import Ui_MainWindow
 
 
 class MainProgram(QMainWindow):
@@ -28,8 +28,10 @@ class MainProgram(QMainWindow):
         # Считываем выбранный файл из cb_file.
         selected_file = self.ui.cb_file.currentText()
 
-        # Получаем весь список ID CDEK'а.
-        cd_list = cd.cdek_get_id_list(selected_file)
+        # Получаем весь список ID из эксель таблицы.
+        dc_data_dict = cd.cdek_get_id_list(selected_file)
+        excel_id_list = dc_data_dict.get('id_list')
+        excel_dc_id_list = dc_data_dict.get('dc_id_list')
 
         # Заполняем дату отчета.
         excel_report_date = self.get_file_date(selected_file)
@@ -43,7 +45,7 @@ class MainProgram(QMainWindow):
             format_number = 2
 
         # Выводим ID из таблицы.
-        uplouded_text = calc.get_text(cd_list, format_number)
+        uplouded_text = calc.get_text(excel_id_list, format_number)
         self.ui.pe_uploaded.setPlainText(uplouded_text)
 
         # Выводим количество ID из таблицы.
@@ -51,7 +53,7 @@ class MainProgram(QMainWindow):
         self.ui.le_uploaded.setText(f'Всего: {uploaded_amount}')
 
         # Берем полный ID из таблицы для внесения в repeats_report.
-        full_id_text = calc.get_text(cd_list)
+        full_id_text = calc.get_text(excel_id_list)
 
         # Проверяем файл отчёта.
         report_file = 'repeats_reports.txt'
@@ -61,6 +63,13 @@ class MainProgram(QMainWindow):
             self.update_report_file(
                 report_file, text_report_date, full_id_text
             )
+            # Выводим трек-номера.
+            dc_id_text = calc.get_text(excel_dc_id_list)
+            self.ui.pe_track_id.setPlainText(dc_id_text)
+
+            # Выводим количество трек-номеров.
+            track_amount = len(dc_id_text.splitlines())
+            self.ui.le_track_id.setText(f'Всего: {track_amount}')
 
             # Пишем лог.
             log_text = f'Создан файл: {report_file}'
@@ -75,7 +84,7 @@ class MainProgram(QMainWindow):
                 # Если данные в файлее отчета старее, чем данные в таблице, то
                 # Ищем повторы.
                 id_list = file_data.get('id_list')
-                for element in cd_list:
+                for element in excel_id_list:
                     if element in id_list:
                         repeats_list.append(element)
 
@@ -93,13 +102,21 @@ class MainProgram(QMainWindow):
                 self.ui.le_repeats.setText(f'Всего: {repeats_amount}')
 
                 # Выводим ID без повторов.
-                result_list = self.list_difference(cd_list, repeats_list)
+                result_list = self.list_difference(excel_id_list, repeats_list)
                 result_text = calc.get_text(result_list, format_number)
                 self.ui.pe_result.setPlainText(result_text)
 
                 # Выводим количество ID без повторов.
                 result_amount = len(result_text.splitlines())
                 self.ui.le_result.setText(f'Всего: {result_amount}')
+
+                # Выводим трек-номера.
+                dc_id_text = calc.get_text(excel_dc_id_list)
+                self.ui.pe_track_id.setPlainText(dc_id_text)
+
+                # Выводим количество трек-номеров.
+                track_amount = len(dc_id_text.splitlines())
+                self.ui.le_track_id.setText(f'Всего: {track_amount}')
 
                 # Пишем лог.
                 log_text = f'Загружены данные из файла {selected_file}'
@@ -111,10 +128,14 @@ class MainProgram(QMainWindow):
                 self.log_updater(log_text)
 
                 # Очищаем повторяющиеся и неповторяющиеся ID и их количество.
-                self.ui.pe_repeats.clear()
-                self.ui.le_repeats.clear()
-                self.ui.pe_result.clear()
-                self.ui.le_result.clear()
+                self.clear_table(
+                    self.ui.pe_repeats,
+                    self.ui.le_repeats,
+                    self.ui.pe_result,
+                    self.ui.le_result,
+                    self.ui.pe_track_id,
+                    self.ui.le_track_id,
+                )
 
     @staticmethod
     def get_file_data(file_name: str) -> dict:
@@ -184,6 +205,15 @@ class MainProgram(QMainWindow):
 
         return None
 
+    def copy_track_id(self) -> None:
+        """
+        Функция для копирования трек-номеров.
+        """
+        text = self.ui.pe_track_id.toPlainText()
+        pyperclip.copy(text)
+
+        return None
+
     def log_updater(self, text: str) -> None:
         """
         Функция для обновления информации в логе
@@ -209,6 +239,7 @@ class MainProgram(QMainWindow):
         self.ui.btn_copy_uploaded.clicked.connect(self.copy_uploaded)
         self.ui.btn_copy_repeats.clicked.connect(self.copy_repeats)
         self.ui.btn_copy_result.clicked.connect(self.copy_result)
+        self.ui.btn_copy_track_id.clicked.connect(self.copy_track_id)
 
         # Кнопка очистки лога.
         self.ui.btn_clean_log.clicked.connect(self.log_cleaner)
@@ -230,12 +261,6 @@ class MainProgram(QMainWindow):
         )
 
         return file_date
-
-    def some_func(self, name) -> None:
-        test_str = f'self.ui.pe_{name}.setPlainText("test")'
-        # self.ui.pe_result.setPlainText(result_text)
-        eval(test_str)
-        return None
 
     def cb_dc_pattern_filter(self) -> None:
         """
@@ -289,6 +314,11 @@ class MainProgram(QMainWindow):
 
         return None
 
+    def clear_table(self, *args) -> None:
+        for arg in args:
+            arg.clear()
+        return None
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
@@ -306,6 +336,9 @@ if __name__ == "__main__":
 # self.ui.le_report_date.setStyleSheet('background-color: green')
 
 # todo:
-# Добавить кнопку формирования внутренних номеров сдека (в конце дня).
 # Переработать логику с проверкой файла на наличие.
-# обработка заказов 00ФР-001925
+# Добавить обработку файлов с -1
+# добавить обработку разных ТК
+# Создавать файл BU для каждого дня
+# Время поменять на Московское
+# Добавить отображение даты последнего загруженного отчета
