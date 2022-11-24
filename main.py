@@ -10,6 +10,8 @@ import calculations as calc
 import CDEK_report as cd
 from design11 import Ui_MainWindow
 
+ID_LENGTH = 8
+
 
 class MainProgram(QMainWindow):
     @staticmethod
@@ -40,20 +42,32 @@ class MainProgram(QMainWindow):
     @staticmethod
     def get_file_data(file_name: str) -> dict:
         """
-        Функция для чтения файлов, где первой строчкой идет дата, а в каждой
-        последующей строчке ID
+        Функция для чтения файлов, где первой строчкой идет дата, затем в
+        каждой строчке внутренние ID, а после трек номера в ТК. Возвращает 
+        результат ввиде словаря с ключами 'date', 'id_list', 'track_id_list'
+        соответственно.
         """
         date_format = '%d.%m.%Y %H:%M:%S'
         with open(file_name, 'r') as opened_file:
             id_list = []
+            track_id_list = []
             for line in opened_file:
                 line = line.rstrip('\n')
                 try:
-                    id_list.append(int(line))
+                    int(line)
+                    if len(line) == ID_LENGTH:
+                        id_list.append(line)
+                    else:
+                        track_id_list.append(line)
+
                 except Exception:
                     date_from_file = dt.datetime.strptime(line, date_format)
                     continue
-        result = {'date': date_from_file, 'id_list': id_list}
+        result = {
+            'date': date_from_file,
+            'id_list': id_list,
+            'track_id_list': track_id_list,
+        }
         return result
 
     @staticmethod
@@ -104,10 +118,6 @@ class MainProgram(QMainWindow):
         uplouded_text = calc.get_text(excel_id_list, format_number)
         self.complete_upload_table(uplouded_text)
 
-        # Заполняем таблицу "Трек-номера".
-        dc_id_text = calc.get_text(excel_dc_id_list)
-        self.complete_track_id_table(dc_id_text)
-
         # Проверяем файл отчёта и выводим данные.
         self.repeats_report_creation(
             text_report_date,
@@ -115,6 +125,7 @@ class MainProgram(QMainWindow):
             excel_report_date,
             format_number,
             selected_file,
+            excel_dc_id_list,
         )
 
     def copy_uploaded(self) -> None:
@@ -298,17 +309,20 @@ class MainProgram(QMainWindow):
         excel_report_date,
         format_number,
         selected_file,
+        excel_dc_id_list,
     ) -> None:
         """
         Функция для создания и обновления файла повторов и вывода результата.
         """
-        full_id_text = calc.get_text(excel_id_list)
+        report_id_list = excel_id_list + excel_dc_id_list
+        report_id_text = calc.get_text(report_id_list)
         report_file = 'repeats_reports.txt'
         repeats_list = []
+        track_id_without_repeats = []
         if not (os.path.exists(report_file)):
             # Если файла отчёта нет - создаем его и заполняем ID из таблицы.
             self.update_report_file(
-                report_file, text_report_date, full_id_text
+                report_file, text_report_date, report_id_text
             )
 
             # Пишем лог.
@@ -324,13 +338,18 @@ class MainProgram(QMainWindow):
                 # Если данные в файлее отчета старее, чем данные в таблице, то
                 # Ищем повторы.
                 id_list = file_data.get('id_list')
+                report_track_id_list = file_data.get('track_id_list')
                 for element in excel_id_list:
                     if element in id_list:
                         repeats_list.append(element)
 
+                for element in excel_dc_id_list:
+                    if element not in report_track_id_list:
+                        track_id_without_repeats.append(element)
+
                 # Замещаем данные в файле отчета данными из таблицы.
                 self.update_report_file(
-                    report_file, text_report_date, full_id_text
+                    report_file, text_report_date, report_id_text
                 )
 
                 # Выводим повторяющиеся ID.
@@ -341,6 +360,10 @@ class MainProgram(QMainWindow):
                 result_list = self.list_difference(excel_id_list, repeats_list)
                 result_text = calc.get_text(result_list, format_number)
                 self.complete_result_table(result_text)
+
+                # Заполняем таблицу "Трек-номера".
+                dc_id_text = calc.get_text(track_id_without_repeats)
+                self.complete_track_id_table(dc_id_text)
 
                 # Пишем лог.
                 log_text = f'Загружены данные из файла {selected_file}'
@@ -363,21 +386,6 @@ class MainProgram(QMainWindow):
                 )
 
         return None
-
-    # def repeats_report_track_id_creation(
-    #     self, text_report_date, excel_dc_id_list
-    # ) -> None:
-    #     """
-    #     Функция для создания и обновления файла повторов трек номеров.
-    #     """
-    #     report_file = 'track_id_repeats.txt'
-    #     full_id_text = calc.get_text(excel_dc_id_list)
-    #     if not (os.path.exists(report_file)):
-    #         # Если файла отчёта нет - создаем его и заполняем ID из таблицы.
-    #         self.update_report_file(
-    #             report_file, text_report_date, full_id_text
-    #         )
-    #     return None
 
 
 if __name__ == "__main__":
