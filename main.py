@@ -16,6 +16,9 @@ ID_LENGTH = 8
 class MainProgram(QMainWindow):
     @staticmethod
     def get_file_date(file_name) -> dt:
+        """
+        Функция получает дату создания отчета по имени файла.
+        """
         file_name_list = file_name.replace(".xlsx", "").split(" ")
 
         date_time_str = file_name_list[-2:]
@@ -165,6 +168,9 @@ class MainProgram(QMainWindow):
         return None
 
     def load_btn_connection(self) -> None:
+        """
+        Функция для связи кнопок с функциями-обработчиками.
+        """
         # Кнопка загрузки файла.
         self.ui.btn_upload.clicked.connect(self.load_file)
 
@@ -243,6 +249,9 @@ class MainProgram(QMainWindow):
         return None
 
     def clear_table(self, *args) -> None:
+        """
+        Очищает данные в выбранных таблицах.
+        """
         for arg in args:
             arg.clear()
         return None
@@ -446,3 +455,4 @@ if __name__ == "__main__":
 # Поправить импорты (импортировать только необходимые методы).
 # Читать и записывать информацию в json формате.
 # Печатать накладные ТК
+# Функцию считывания даты из названия файла впихнуть в класс ТК.
