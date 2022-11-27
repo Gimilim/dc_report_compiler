@@ -43,7 +43,7 @@ class MainProgram(QMainWindow):
     def get_file_data(file_name: str) -> dict:
         """
         Функция для чтения файлов, где первой строчкой идет дата, затем в
-        каждой строчке внутренние ID, а после трек номера в ТК. Возвращает 
+        каждой строчке внутренние ID, а после трек номера в ТК. Возвращает
         результат ввиде словаря с ключами 'date', 'id_list', 'track_id_list'
         соответственно.
         """
@@ -314,56 +314,49 @@ class MainProgram(QMainWindow):
         """
         Функция для создания и обновления файла повторов и вывода результата.
         """
-        report_id_list = excel_id_list + excel_dc_id_list
-        report_id_text = calc.get_text(report_id_list)
+        report_excel_list = excel_id_list + excel_dc_id_list
+        report_id_text = calc.get_text(report_excel_list)
         report_file = 'repeats_reports.txt'
-        repeats_list = []
         track_id_without_repeats = []
         if not (os.path.exists(report_file)):
-            # Если файла отчёта нет - создаем его и заполняем ID из таблицы.
-            self.update_report_file(
-                report_file, text_report_date, report_id_text
+            track_id_without_repeats = excel_dc_id_list
+            self.create_report_file(
+                report_file,
+                text_report_date,
+                report_id_text,
+                excel_id_list,
+                track_id_without_repeats,
+                format_number,
             )
-
-            # Пишем лог.
-            log_text = f'Создан файл: {report_file}'
-            self.log_updater(log_text)
         else:
-            # Если файл отчёта есть - считываем дату.
             file_data = self.get_file_data(report_file)
             date_from_file = file_data.get('date')
 
             # Проверяем какие данные более свежие.
             if date_from_file < excel_report_date:
-                # Если данные в файлее отчета старее, чем данные в таблице, то
-                # Ищем повторы.
-                id_list = file_data.get('id_list')
-                report_track_id_list = file_data.get('track_id_list')
-                for element in excel_id_list:
-                    if element in id_list:
-                        repeats_list.append(element)
+                # Получаем словарь с данными из файла
+                repeat_dict = self.repeats_list_creation(
+                    file_data, excel_id_list, excel_dc_id_list
+                )
 
-                for element in excel_dc_id_list:
-                    if element not in report_track_id_list:
-                        track_id_without_repeats.append(element)
+                # Получаем списки из словаря.
+                repeats_list = repeat_dict.get('repeats_list')
+                track_id_without_repeats = repeat_dict.get(
+                    'track_id_without_repeats'
+                )
+
+                # Заполняем таблицы.
+                self.complete_tables(
+                    excel_id_list,
+                    track_id_without_repeats,
+                    format_number,
+                    repeats_list,
+                )
 
                 # Замещаем данные в файле отчета данными из таблицы.
                 self.update_report_file(
                     report_file, text_report_date, report_id_text
                 )
-
-                # Выводим повторяющиеся ID.
-                repeats_text = calc.get_text(repeats_list, format_number)
-                self.complete_repeats_table(repeats_text)
-
-                # Выводим ID без повторов.
-                result_list = self.list_difference(excel_id_list, repeats_list)
-                result_text = calc.get_text(result_list, format_number)
-                self.complete_result_table(result_text)
-
-                # Заполняем таблицу "Трек-номера".
-                dc_id_text = calc.get_text(track_id_without_repeats)
-                self.complete_track_id_table(dc_id_text)
 
                 # Пишем лог.
                 log_text = f'Загружены данные из файла {selected_file}'
@@ -383,9 +376,87 @@ class MainProgram(QMainWindow):
                     self.ui.le_repeats,
                     self.ui.pe_result,
                     self.ui.le_result,
+                    self.ui.pe_track_id,
+                    self.ui.le_track_id,
                 )
 
         return None
+
+    def create_report_file(
+        self,
+        report_file,
+        text_report_date,
+        report_id_text,
+        excel_id_list,
+        track_id_without_repeats,
+        format_number,
+    ) -> None:
+        """
+        Функция для создания файла отчета.
+        """
+        self.update_report_file(report_file, text_report_date, report_id_text)
+
+        # Заполняем таблицы.
+        self.complete_tables(
+            excel_id_list,
+            track_id_without_repeats,
+            format_number,
+        )
+
+        # Пишем лог.
+        log_text = f'Создан файл: {report_file}'
+        self.log_updater(log_text)
+        return None
+
+    def complete_tables(
+        self,
+        excel_id_list,
+        track_id_without_repeats,
+        format_number,
+        repeats_list=[],
+    ) -> None:
+        """
+        Заполняет таблицы 'Повторы', 'Результат' и 'Трек-номера'
+        """
+        # Выводим повторяющиеся ID.
+        repeats_text = calc.get_text(repeats_list, format_number)
+        self.complete_repeats_table(repeats_text)
+
+        # Выводим ID без повторов.
+        result_list = self.list_difference(excel_id_list, repeats_list)
+        result_text = calc.get_text(result_list, format_number)
+        self.complete_result_table(result_text)
+
+        # Заполняем таблицу "Трек-номера".
+        dc_id_text = calc.get_text(track_id_without_repeats)
+        self.complete_track_id_table(dc_id_text)
+
+        return None
+
+    def repeats_list_creation(
+        self, file_data, excel_id_list, excel_dc_id_list
+    ) -> dict:
+        """
+        Функция для создания списков повторов ID и трек номеров.
+        """
+        repeats_list = []
+        track_id_without_repeats = []
+        id_list = file_data.get('id_list')
+        report_track_id_list = file_data.get('track_id_list')
+        for element in excel_id_list:
+            if element in id_list:
+                repeats_list.append(element)
+
+        for element in excel_dc_id_list:
+            if element not in report_track_id_list:
+                track_id_without_repeats.append(element)
+
+        result_dict = {
+            'repeats_list': repeats_list,
+            'track_id_without_repeats': track_id_without_repeats,
+        }
+
+        return result_dict
 
 
 if __name__ == "__main__":
@@ -404,10 +475,14 @@ if __name__ == "__main__":
 # self.ui.le_report_date.setStyleSheet('background-color: green')
 
 # todo:
-# Переработать логику с проверкой файла на наличие.
+# Переработать логику с проверкой файла report на наличие.
 # Добавить обработку файлов с -1 (актуально для боксбери).
 # Добавить обработку разных ТК.
 # Создавать файл BU для каждого дня.
-# Время поменять на Московское.
+# Время поменять на Московское (или показывать и то и другое).
 # Добавить отображение даты последнего загруженного отчета.
-# Добавить проверку для трек номеров на повтор трека с 00фр.
+# Добавить файл конфига где будет выбор откуда брать файлы отчета.
+# Добавить галочку для загрузки отчета без изменений в report файл.
+# Переработать логику при отсутствии файла report чтобы трек номера появлялись.
+# Разобраться с трек номера нужно ли их показывать при повторах или нет
+# Написать тесты для функций.
