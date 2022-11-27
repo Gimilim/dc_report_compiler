@@ -85,6 +85,16 @@ class MainProgram(QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
+        self.le_uploaded = self.ui.le_uploaded
+        self.le_repeats = self.ui.le_repeats
+        self.le_result = self.ui.le_result
+        self.le_track_id = self.ui.le_track_id
+
+        self.pe_uploaded = self.ui.pe_uploaded
+        self.pe_repeats = self.ui.pe_repeats
+        self.pe_result = self.ui.pe_result
+        self.pe_track_id = self.ui.pe_track_id
+
         # Папка с excel отчетами.
         self.dir = '.'
 
@@ -116,9 +126,7 @@ class MainProgram(QMainWindow):
 
         # Заполняем таблицу "Выгружено".
         uplouded_text = calc.get_text(excel_id_list, format_number)
-        self.complete_table(
-            self.ui.le_uploaded, self.ui.pe_uploaded, uplouded_text
-        )
+        self.complete_table(self.le_uploaded, self.pe_uploaded, uplouded_text)
 
         # Проверяем файл отчёта и выводим данные.
         self.repeats_report_creation(
@@ -162,16 +170,16 @@ class MainProgram(QMainWindow):
 
         # Кнопки копирования текста из поля.
         self.ui.btn_copy_uploaded.clicked.connect(
-            lambda: self.copy_field_text(self.ui.pe_uploaded)
+            lambda: self.copy_field_text(self.pe_uploaded)
         )
         self.ui.btn_copy_repeats.clicked.connect(
-            lambda: self.copy_field_text(self.ui.pe_repeats)
+            lambda: self.copy_field_text(self.pe_repeats)
         )
         self.ui.btn_copy_result.clicked.connect(
-            lambda: self.copy_field_text(self.ui.pe_result)
+            lambda: self.copy_field_text(self.pe_result)
         )
         self.ui.btn_copy_track_id.clicked.connect(
-            lambda: self.copy_field_text(self.ui.pe_track_id)
+            lambda: self.copy_field_text(self.pe_track_id)
         )
 
         # Кнопка очистки лога.
@@ -320,12 +328,12 @@ class MainProgram(QMainWindow):
 
                 # Очищаем повторяющиеся и неповторяющиеся ID и их количество.
                 self.clear_table(
-                    self.ui.pe_repeats,
-                    self.ui.le_repeats,
-                    self.ui.pe_result,
-                    self.ui.le_result,
-                    self.ui.pe_track_id,
-                    self.ui.le_track_id,
+                    self.pe_repeats,
+                    self.le_repeats,
+                    self.pe_result,
+                    self.le_result,
+                    self.pe_track_id,
+                    self.le_track_id,
                 )
 
         return None
@@ -368,20 +376,16 @@ class MainProgram(QMainWindow):
         """
         # Выводим повторяющиеся ID.
         repeats_text = calc.get_text(repeats_list, format_number)
-        self.complete_table(
-            self.ui.le_repeats, self.ui.pe_repeats, repeats_text
-        )
+        self.complete_table(self.le_repeats, self.pe_repeats, repeats_text)
 
         # Выводим ID без повторов.
         result_list = self.list_difference(excel_id_list, repeats_list)
         result_text = calc.get_text(result_list, format_number)
-        self.complete_table(self.ui.le_result, self.ui.pe_result, result_text)
+        self.complete_table(self.le_result, self.pe_result, result_text)
 
         # Заполняем таблицу "Трек-номера".
         dc_id_text = calc.get_text(track_id_without_repeats)
-        self.complete_table(
-            self.ui.le_track_id, self.ui.pe_track_id, dc_id_text
-        )
+        self.complete_table(self.le_track_id, self.pe_track_id, dc_id_text)
 
         return None
 
@@ -433,10 +437,11 @@ if __name__ == "__main__":
 # Создавать файл BU для каждого дня.
 # Время поменять на Московское (или показывать и то и другое).
 # Добавить отображение даты последнего загруженного отчета.
-# Добавить файл конфига где будет выбор откуда брать файлы отчета.
+
+# Добавить файл конфига где будет выбор откуда брать файлы отчета и
+# настройки "парса" эксель отчетов разных ТК.
+
 # Добавить галочку для загрузки отчета без изменений в report файл.
-# Переработать логику при отсутствии файла report чтобы трек номера появлялись.
-# Разобраться с трек номера нужно ли их показывать при повторах или нет
 # Написать тесты для функций.
 # Поправить импорты (импортировать только необходимые методы).
 # Читать и записывать информацию в json формате.
