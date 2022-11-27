@@ -3,6 +3,15 @@ import json
 import pandas as pd
 
 
+class read_excel_report:
+    def __init__(self, file_name, colomn, converters) -> None:
+        self.file_name = file_name
+        self.colomn = colomn
+        self.converters = converters
+
+    pass
+
+
 def cdek_get_id_list(file_name: str) -> list:
     dc_id_list = []
     id_list = []

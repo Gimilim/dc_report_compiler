@@ -116,7 +116,9 @@ class MainProgram(QMainWindow):
 
         # Заполняем таблицу "Выгружено".
         uplouded_text = calc.get_text(excel_id_list, format_number)
-        self.complete_upload_table(uplouded_text)
+        self.complete_table(
+            self.ui.le_uploaded, self.ui.pe_uploaded, uplouded_text
+        )
 
         # Проверяем файл отчёта и выводим данные.
         self.repeats_report_creation(
@@ -128,38 +130,11 @@ class MainProgram(QMainWindow):
             excel_dc_id_list,
         )
 
-    def copy_uploaded(self) -> None:
+    def copy_field_text(self, field: QMainWindow) -> None:
         """
-        Функция для копирования загруженных ID.
+        Функция для копирования текста из поля.
         """
-        text = self.ui.pe_uploaded.toPlainText()
-        pyperclip.copy(text)
-
-        return None
-
-    def copy_repeats(self) -> None:
-        """
-        Функция для копирования повторных ID.
-        """
-        text = self.ui.pe_repeats.toPlainText()
-        pyperclip.copy(text)
-
-        return None
-
-    def copy_result(self) -> None:
-        """
-        Функция для копирования ID без повторов.
-        """
-        text = self.ui.pe_result.toPlainText()
-        pyperclip.copy(text)
-
-        return None
-
-    def copy_track_id(self) -> None:
-        """
-        Функция для копирования трек-номеров.
-        """
-        text = self.ui.pe_track_id.toPlainText()
+        text = field.toPlainText()
         pyperclip.copy(text)
 
         return None
@@ -186,10 +161,18 @@ class MainProgram(QMainWindow):
         self.ui.btn_upload.clicked.connect(self.load_file)
 
         # Кнопки копирования текста из поля.
-        self.ui.btn_copy_uploaded.clicked.connect(self.copy_uploaded)
-        self.ui.btn_copy_repeats.clicked.connect(self.copy_repeats)
-        self.ui.btn_copy_result.clicked.connect(self.copy_result)
-        self.ui.btn_copy_track_id.clicked.connect(self.copy_track_id)
+        self.ui.btn_copy_uploaded.clicked.connect(
+            lambda: self.copy_field_text(self.ui.pe_uploaded)
+        )
+        self.ui.btn_copy_repeats.clicked.connect(
+            lambda: self.copy_field_text(self.ui.pe_repeats)
+        )
+        self.ui.btn_copy_result.clicked.connect(
+            lambda: self.copy_field_text(self.ui.pe_result)
+        )
+        self.ui.btn_copy_track_id.clicked.connect(
+            lambda: self.copy_field_text(self.ui.pe_track_id)
+        )
 
         # Кнопка очистки лога.
         self.ui.btn_clean_log.clicked.connect(self.log_cleaner)
@@ -256,50 +239,15 @@ class MainProgram(QMainWindow):
             arg.clear()
         return None
 
-    def complete_upload_table(self, uplouded_text) -> None:
+    def complete_table(self, le_field, pe_field, text) -> None:
         """
-        Функция заполнения таблицы "Выгружено".
+        Функция заполняет текст в поле Plain Edit и записывает количество
+        строк в поле Line Edit.
         """
-        self.ui.pe_uploaded.setPlainText(uplouded_text)
+        pe_field.setPlainText(text)
 
-        uploaded_amount = len(uplouded_text.splitlines())
-        self.ui.le_uploaded.setText(f'Всего: {uploaded_amount}')
-
-        return None
-
-    def complete_repeats_table(self, repeats_text) -> None:
-        """
-        Функция заполнения таблицы "Повторы".
-        """
-        self.ui.pe_repeats.setPlainText(repeats_text)
-
-        # Выводим количество повторяющихся ID.
-        repeats_amount = len(repeats_text.splitlines())
-        self.ui.le_repeats.setText(f'Всего: {repeats_amount}')
-
-        return None
-
-    def complete_result_table(self, result_text) -> None:
-        """
-        Функция заполнения таблицы "Результат".
-        """
-        self.ui.pe_result.setPlainText(result_text)
-
-        # Выводим количество ID без повторов.
-        result_amount = len(result_text.splitlines())
-        self.ui.le_result.setText(f'Всего: {result_amount}')
-
-        return None
-
-    def complete_track_id_table(self, dc_id_text) -> None:
-        """
-        Функция заполнения таблицы "Трек-номера".
-        """
-        self.ui.pe_track_id.setPlainText(dc_id_text)
-
-        track_amount = len(dc_id_text.splitlines())
-        self.ui.le_track_id.setText(f'Всего: {track_amount}')
-
+        amount = len(text.splitlines())
+        le_field.setText(f'Всего: {amount}')
         return None
 
     def repeats_report_creation(
@@ -346,7 +294,7 @@ class MainProgram(QMainWindow):
                 )
 
                 # Заполняем таблицы.
-                self.complete_tables(
+                self.complete_all_tables(
                     excel_id_list,
                     track_id_without_repeats,
                     format_number,
@@ -397,7 +345,7 @@ class MainProgram(QMainWindow):
         self.update_report_file(report_file, text_report_date, report_id_text)
 
         # Заполняем таблицы.
-        self.complete_tables(
+        self.complete_all_tables(
             excel_id_list,
             track_id_without_repeats,
             format_number,
@@ -408,7 +356,7 @@ class MainProgram(QMainWindow):
         self.log_updater(log_text)
         return None
 
-    def complete_tables(
+    def complete_all_tables(
         self,
         excel_id_list,
         track_id_without_repeats,
@@ -420,16 +368,20 @@ class MainProgram(QMainWindow):
         """
         # Выводим повторяющиеся ID.
         repeats_text = calc.get_text(repeats_list, format_number)
-        self.complete_repeats_table(repeats_text)
+        self.complete_table(
+            self.ui.le_repeats, self.ui.pe_repeats, repeats_text
+        )
 
         # Выводим ID без повторов.
         result_list = self.list_difference(excel_id_list, repeats_list)
         result_text = calc.get_text(result_list, format_number)
-        self.complete_result_table(result_text)
+        self.complete_table(self.ui.le_result, self.ui.pe_result, result_text)
 
         # Заполняем таблицу "Трек-номера".
         dc_id_text = calc.get_text(track_id_without_repeats)
-        self.complete_track_id_table(dc_id_text)
+        self.complete_table(
+            self.ui.le_track_id, self.ui.pe_track_id, dc_id_text
+        )
 
         return None
 
@@ -486,3 +438,6 @@ if __name__ == "__main__":
 # Переработать логику при отсутствии файла report чтобы трек номера появлялись.
 # Разобраться с трек номера нужно ли их показывать при повторах или нет
 # Написать тесты для функций.
+# Поправить импорты (импортировать только необходимые методы).
+# Читать и записывать информацию в json формате.
+# Печатать накладные ТК
