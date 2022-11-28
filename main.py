@@ -207,7 +207,7 @@ class MainProgram(QMainWindow):
             case 'Shiptor':
                 pattern = 'Shiptor'
             case 'Boxberry':
-                pattern = 'Boxberry'
+                pattern = 'parcel_export_*.xlsx'
             case 'Grastin':
                 pattern = 'Grastin'
         self.cb_file_add_filtered_items(pattern)
