@@ -11,8 +11,6 @@ import calculations as calc
 import CDEK_report as cd
 from design11 import Ui_MainWindow
 
-# json.loads(string)
-
 ID_LENGTH = 8
 
 
@@ -325,7 +323,14 @@ class MainProgram(QMainWindow):
                 self.update_report_file(
                     report_file, text_report_date, report_id_text
                 )
-                
+
+                file_name = 'sdek_report.txt'
+                self.upd_cdek_report_file(
+                    file_name,
+                    text_report_date,
+                    excel_id_list,
+                    excel_dc_id_list,
+                )
 
                 # Пишем лог.
                 log_text = f'Загружены данные из файла {selected_file}'
@@ -427,9 +432,13 @@ class MainProgram(QMainWindow):
 
         return result_dict
 
-    def new_report_test_func(
+    @staticmethod
+    def upd_cdek_report_file(
         file_name, report_date, id_list, dc_id_list
     ) -> None:
+        """
+        Updating CDEK report file func.
+        """
 
         text = (
             f'{{"date": "{report_date}", '
@@ -442,13 +451,23 @@ class MainProgram(QMainWindow):
 
         return None
 
+    @staticmethod
+    def read_cdek_report(file_name) -> dict:
+        """
+        Read CDEK report file func.
+        """
+        with open(file_name, 'r') as opened_file:
+            file_data = opened_file.read()
+            data_dict = json.loads(file_data)
+
+        return data_dict
+
 
 if __name__ == "__main__":
-    # app = QApplication(sys.argv)
-    # window = MainProgram()
-    # window.show()
-    # sys.exit(app.exec())
-
+    app = QApplication(sys.argv)
+    window = MainProgram()
+    window.show()
+    sys.exit(app.exec())
 
 
 # Для комплирования дизайна.
@@ -477,3 +496,4 @@ if __name__ == "__main__":
 # Читать и записывать информацию в json формате.
 # Печатать накладные ТК
 # Функцию считывания даты из названия файла впихнуть в класс ТК.
+# Добавить кнопку обновить файлы в комбо бокс (или оновлять их автоматически)
