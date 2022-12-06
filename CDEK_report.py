@@ -88,7 +88,7 @@ if __name__ == '__main__':
     # print(cdek.get_file_data())
 
     boxberry_file_name = 'parcel_export_637f625539516.xlsx'
-    boxberry_colomn = 'C,A'
+    boxberry_colomn = 'A,C'
     boxberry_converters = {
         'Код для слежения': str,
         'Номер заказа': (lambda x: str(x).replace(' ', '').replace('-1', '')),

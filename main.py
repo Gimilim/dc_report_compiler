@@ -1,5 +1,6 @@
 import datetime as dt
 import fnmatch
+import json
 import os
 import sys
 
@@ -9,6 +10,8 @@ from PySide6.QtWidgets import QApplication, QMainWindow
 import calculations as calc
 import CDEK_report as cd
 from design11 import Ui_MainWindow
+
+# json.loads(string)
 
 ID_LENGTH = 8
 
@@ -322,6 +325,7 @@ class MainProgram(QMainWindow):
                 self.update_report_file(
                     report_file, text_report_date, report_id_text
                 )
+                
 
                 # Пишем лог.
                 log_text = f'Загружены данные из файла {selected_file}'
@@ -423,12 +427,29 @@ class MainProgram(QMainWindow):
 
         return result_dict
 
+    def new_report_test_func(
+        file_name, report_date, id_list, dc_id_list
+    ) -> None:
+
+        text = (
+            f'{{"date": "{report_date}", '
+            f'"id_list": "{id_list}", '
+            f'"dc_id_list": "{dc_id_list}"}}'
+        )
+
+        with open(file_name, 'w') as opened_file:
+            opened_file.write(text)
+
+        return None
+
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = MainProgram()
-    window.show()
-    sys.exit(app.exec())
+    # app = QApplication(sys.argv)
+    # window = MainProgram()
+    # window.show()
+    # sys.exit(app.exec())
+
+
 
 # Для комплирования дизайна.
 # pyside6-uic design.ui -o design.py
