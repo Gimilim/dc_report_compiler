@@ -104,7 +104,7 @@ class MainProgram(QMainWindow):
 
         settings = self.read_settings()
         self.dir = settings.get('dir')
-        self.report_file_name = settings.get('file_name')
+        self.report_file_name = settings.get('report_file_name')
         self.report_file = os.path.join(self.dir, self.report_file_name)
 
         # Заполняем часть полей при запуске.
@@ -541,7 +541,10 @@ class MainProgram(QMainWindow):
             with open(file, 'x'):
                 None
 
-            base_settings = {'dir': '.', 'file_name': 'sdek_report.json'}
+            base_settings = {
+                'dir': '.',
+                'report_file_name': 'sdek_report.json',
+            }
             json_data = json.dumps(base_settings, indent=2)
 
             with open(file, 'w') as opened_file:
