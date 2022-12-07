@@ -100,7 +100,12 @@ class MainProgram(QMainWindow):
         self.pe_track_id = self.ui.pe_track_id
 
         # Папка с excel отчетами.
-        self.dir = '.'
+        # self.dir = '.'
+
+        settings = self.read_settings()
+        self.dir = settings.get('dir')
+        self.report_file_name = settings.get('file_name')
+        self.report_file = os.path.join(self.dir, self.report_file_name)
 
         # Заполняем часть полей при запуске.
         self.first_load_setup()
@@ -143,11 +148,7 @@ class MainProgram(QMainWindow):
 
         # test
         self.new_report_creation(
-            excel_report_date,
-            excel_id_list,
-            excel_dc_id_list,
-            '.',
-            'sdek_report.json',
+            excel_report_date, excel_id_list, excel_dc_id_list
         )
 
     def copy_field_text(self, field: QMainWindow) -> None:
@@ -281,41 +282,34 @@ class MainProgram(QMainWindow):
         excel_report_date,
         excel_id_list,
         excel_dc_id_list,
-        report_dir=None,
-        file_name=None,
     ) -> None:
         """Нужно поправить report dir и в клнце добавить логи."""
-        # Проверем задан ли report file
-        if not file_name:
-            # Если нет - ничего не делаем
-            return None
-
-        # Если есть - значит это сдек.
-
         # Проверяем есть ли в папке и если нет - создаем
+
         try:
-            with open(file_name, 'x'):
+            with open(self.report_file, 'x'):
                 None
-            log_text = f'Создан файл {file_name}.'
+            log_text = f'Создан файл {self.report_file_name}.'
             self.log_updater(log_text)
             file_date = dt.datetime.min
         except FileExistsError:
-            log_text = f'Файл {file_name} обнаружен.'
+            log_text = f'Файл {self.report_file_name} обнаружен.'
             self.log_updater(log_text)
 
             # Читаем файл
-            file_data = self.read_cdek_report(file_name)
+            file_data = self.read_cdek_report(self.report_file)
             str_file_date = file_data.get('upd_date')
             file_date = self.string_to_date(str_file_date)
         # Проверяем дату в файле
         if excel_report_date < file_date:
-            # Если файл отчета свежий - ничего не делаем (кроме лога)
+            log_text = 'Данные в отчете устарели!'
+            self.log_updater(log_text)
             return None
 
         text_report_date = self.date_to_string(excel_report_date)
         # Если дата в файле устарела - значит нужно перезаписать файл
         self.upd_cdek_report_file(
-            file_name, text_report_date, excel_id_list, excel_dc_id_list
+            self.file, text_report_date, excel_id_list, excel_dc_id_list
         )
         return None
 
@@ -485,7 +479,7 @@ class MainProgram(QMainWindow):
 
     @staticmethod
     def upd_cdek_report_file(
-        file_name, text_report_date, id_list, dc_id_list
+        file_name, text_report_date, id_list, dc_id_list, dir='.'
     ) -> None:
         """
         Updating CDEK report file func.
@@ -499,17 +493,18 @@ class MainProgram(QMainWindow):
 
         json_data = json.dumps(data_dict, indent=2)
 
-        with open(file_name, 'w') as opened_file:
+        file = os.path.join(dir, file_name)
+        with open(file, 'w') as opened_file:
             opened_file.write(json_data)
 
         return None
 
     @staticmethod
-    def read_cdek_report(file_name) -> dict:
+    def read_cdek_report(file) -> dict:
         """
         Read CDEK report file func.
         """
-        with open(file_name, 'r') as opened_file:
+        with open(file, 'r') as opened_file:
             file_data = opened_file.read()
             data_dict = json.loads(file_data)
 
@@ -534,6 +529,33 @@ class MainProgram(QMainWindow):
         text_date = date.strftime(date_format)
 
         return text_date
+
+    @staticmethod
+    def read_settings() -> dict:
+        """
+        Read settings file.
+        """
+
+        file = 'settings.json'
+        try:
+            with open(file, 'x'):
+                None
+
+            base_settings = {'dir': '.', 'file_name': 'sdek_report.json'}
+            json_data = json.dumps(base_settings, indent=2)
+
+            with open(file, 'w') as opened_file:
+                opened_file.write(json_data)
+
+        except FileExistsError:
+            None
+
+        with open(file, 'r') as opened_file:
+            text = opened_file.read()
+
+            settings_dict = json.loads(text)
+
+        return settings_dict
 
 
 if __name__ == "__main__":
