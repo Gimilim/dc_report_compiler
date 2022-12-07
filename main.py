@@ -119,8 +119,7 @@ class MainProgram(QMainWindow):
 
         # Заполняем дату отчета.
         excel_report_date = self.get_file_date(selected_file)
-        date_format = '%d.%m.%Y %H:%M:%S'
-        text_report_date = excel_report_date.strftime(date_format)
+        text_report_date = self.date_to_string(excel_report_date)
         self.ui.le_report_date.setText(text_report_date)
 
         # Проверяем нужно ли отбрасывать первые 2 символа ID.
@@ -140,6 +139,15 @@ class MainProgram(QMainWindow):
             format_number,
             selected_file,
             excel_dc_id_list,
+        )
+
+        # test
+        self.new_report_creation(
+            excel_report_date,
+            excel_id_list,
+            excel_dc_id_list,
+            '.',
+            'sdek_report.json',
         )
 
     def copy_field_text(self, field: QMainWindow) -> None:
@@ -266,6 +274,49 @@ class MainProgram(QMainWindow):
 
         amount = len(text.splitlines())
         le_field.setText(f'Всего: {amount}')
+        return None
+
+    def new_report_creation(
+        self,
+        excel_report_date,
+        excel_id_list,
+        excel_dc_id_list,
+        report_dir=None,
+        file_name=None,
+    ) -> None:
+        """Нужно поправить report dir и в клнце добавить логи."""
+        # Проверем задан ли report file
+        if not file_name:
+            # Если нет - ничего не делаем
+            return None
+
+        # Если есть - значит это сдек.
+
+        # Проверяем есть ли в папке и если нет - создаем
+        try:
+            with open(file_name, 'x'):
+                None
+            log_text = f'Создан файл {file_name}.'
+            self.log_updater(log_text)
+            file_date = dt.datetime.min
+        except FileExistsError:
+            log_text = f'Файл {file_name} обнаружен.'
+            self.log_updater(log_text)
+
+            # Читаем файл
+            file_data = self.read_cdek_report(file_name)
+            str_file_date = file_data.get('upd_date')
+            file_date = self.string_to_date(str_file_date)
+        # Проверяем дату в файле
+        if excel_report_date < file_date:
+            # Если файл отчета свежий - ничего не делаем (кроме лога)
+            return None
+
+        text_report_date = self.date_to_string(excel_report_date)
+        # Если дата в файле устарела - значит нужно перезаписать файл
+        self.upd_cdek_report_file(
+            file_name, text_report_date, excel_id_list, excel_dc_id_list
+        )
         return None
 
     def repeats_report_creation(
@@ -434,20 +485,22 @@ class MainProgram(QMainWindow):
 
     @staticmethod
     def upd_cdek_report_file(
-        file_name, report_date, id_list, dc_id_list
+        file_name, text_report_date, id_list, dc_id_list
     ) -> None:
         """
         Updating CDEK report file func.
         """
 
-        text = (
-            f'{{"date": "{report_date}", '
-            f'"id_list": "{id_list}", '
-            f'"dc_id_list": "{dc_id_list}"}}'
-        )
+        data_dict = {
+            'upd_date': text_report_date,
+            'id_list': id_list,
+            'dc_id_list': dc_id_list,
+        }
+
+        json_data = json.dumps(data_dict, indent=2)
 
         with open(file_name, 'w') as opened_file:
-            opened_file.write(text)
+            opened_file.write(json_data)
 
         return None
 
@@ -461,6 +514,26 @@ class MainProgram(QMainWindow):
             data_dict = json.loads(file_data)
 
         return data_dict
+
+    @staticmethod
+    def string_to_date(text_date: str) -> dt.datetime:
+        """
+        Transform string date with format yyyy-mm-dd hh:mm:ss to dt object.
+        """
+        date_format = '%d.%m.%Y %H:%M:%S'
+        date = dt.datetime.strptime(text_date, date_format)
+
+        return date
+
+    @staticmethod
+    def date_to_string(date: dt.datetime) -> str:
+        """
+        Transfrom dt object to str with format yyyy-mm-dd hh:mm:ss.
+        """
+        date_format = '%d.%m.%Y %H:%M:%S'
+        text_date = date.strftime(date_format)
+
+        return text_date
 
 
 if __name__ == "__main__":
