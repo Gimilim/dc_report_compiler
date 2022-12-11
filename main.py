@@ -9,7 +9,7 @@ from PySide6.QtWidgets import QApplication, QMainWindow
 
 import calculations as calc
 import CDEK_report as cd
-from design11 import Ui_MainWindow
+from design12 import Ui_MainWindow
 
 ID_LENGTH = 8
 
@@ -89,18 +89,25 @@ class MainProgram(QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
-        self.le_uploaded = self.ui.le_uploaded
-        self.le_repeats = self.ui.le_repeats
-        self.le_result = self.ui.le_result
-        self.le_track_id = self.ui.le_track_id
+        # ID
+        self.le_uploaded_id = self.ui.le_uploaded_id
+        self.le_repeats_id = self.ui.le_repeats_id
+        self.le_result_id = self.ui.le_result_id
 
-        self.pe_uploaded = self.ui.pe_uploaded
-        self.pe_repeats = self.ui.pe_repeats
-        self.pe_result = self.ui.pe_result
-        self.pe_track_id = self.ui.pe_track_id
+        self.pe_uploaded_id = self.ui.pe_uploaded_id
+        self.pe_repeats_id = self.ui.pe_repeats_id
+        self.pe_result_id = self.ui.pe_result_id
 
-        # Папка с excel отчетами.
-        # self.dir = '.'
+        # Track ID
+        self.le_uploaded_track_id = self.ui.le_uploaded_track_id
+        self.le_repeats_track_id = self.ui.le_repeats_track_id
+        self.le_result_track_id = self.ui.le_result_track_id
+
+        self.pe_uploaded_track_id = self.ui.pe_uploaded_track_id
+        self.pe_repeats_track_id = self.ui.pe_repeats_track_id
+        self.pe_result_track_id = self.ui.pe_result_track_id
+
+        self.pe_log = self.ui.pe_log
 
         settings = self.read_settings()
         self.dir = settings.get('dir')
@@ -134,7 +141,9 @@ class MainProgram(QMainWindow):
 
         # Заполняем таблицу "Выгружено".
         uplouded_text = calc.get_text(excel_id_list, format_number)
-        self.complete_table(self.le_uploaded, self.pe_uploaded, uplouded_text)
+        self.complete_table(
+            self.le_uploaded_id, self.pe_uploaded_id, uplouded_text
+        )
 
         # Проверяем файл отчёта и выводим данные.
         self.repeats_report_creation(
@@ -165,7 +174,7 @@ class MainProgram(QMainWindow):
         Функция для обновления информации в логе
         """
         time = dt.datetime.now().time().strftime('%H:%M:%S')
-        self.ui.pe_log.appendPlainText(f'{time} {text}')
+        self.pe_log.appendPlainText(f'{time} {text}')
 
         return None
 
@@ -173,7 +182,7 @@ class MainProgram(QMainWindow):
         """
         Функция для очистки сообщений лога.
         """
-        self.ui.pe_log.clear()
+        self.pe_log.clear()
 
         return None
 
@@ -185,17 +194,24 @@ class MainProgram(QMainWindow):
         self.ui.btn_upload.clicked.connect(self.load_file)
 
         # Кнопки копирования текста из поля.
-        self.ui.btn_copy_uploaded.clicked.connect(
-            lambda: self.copy_field_text(self.pe_uploaded)
+        self.ui.btn_copy_uploaded_id.clicked.connect(
+            lambda: self.copy_field_text(self.pe_uploaded_id)
         )
-        self.ui.btn_copy_repeats.clicked.connect(
-            lambda: self.copy_field_text(self.pe_repeats)
+        self.ui.btn_copy_repeats_id.clicked.connect(
+            lambda: self.copy_field_text(self.pe_repeats_id)
         )
-        self.ui.btn_copy_result.clicked.connect(
-            lambda: self.copy_field_text(self.pe_result)
+        self.ui.btn_copy_result_id.clicked.connect(
+            lambda: self.copy_field_text(self.pe_result_id)
         )
-        self.ui.btn_copy_track_id.clicked.connect(
-            lambda: self.copy_field_text(self.pe_track_id)
+
+        self.ui.btn_copy_uploaded_track_id.clicked.connect(
+            lambda: self.copy_field_text(self.pe_uploaded_track_id)
+        )
+        self.ui.btn_copy_repeats_track_id.clicked.connect(
+            lambda: self.copy_field_text(self.pe_repeats_track_id)
+        )
+        self.ui.btn_copy_result_track_id.clicked.connect(
+            lambda: self.copy_field_text(self.pe_result_track_id)
         )
 
         # Кнопка очистки лога.
@@ -283,9 +299,12 @@ class MainProgram(QMainWindow):
         excel_id_list,
         excel_dc_id_list,
     ) -> None:
-        """Нужно поправить report dir и в клнце добавить логи."""
-        # Проверяем есть ли в папке и если нет - создаем
+        """
+        Create dc report func.
+        Где-то ошибка! Проверить!!!
+        """
 
+        # Проверяем есть ли в папке и если нет - создаем
         try:
             with open(self.report_file, 'x'):
                 None
@@ -300,17 +319,31 @@ class MainProgram(QMainWindow):
             file_data = self.read_cdek_report(self.report_file)
             str_file_date = file_data.get('upd_date')
             file_date = self.string_to_date(str_file_date)
+
         # Проверяем дату в файле
         if excel_report_date < file_date:
-            log_text = 'Данные в отчете устарели!'
+            log_text = 'Данные в отчете устарели! (new)'
             self.log_updater(log_text)
             return None
 
         text_report_date = self.date_to_string(excel_report_date)
         # Если дата в файле устарела - значит нужно перезаписать файл
-        self.upd_cdek_report_file(
-            self.file, text_report_date, excel_id_list, excel_dc_id_list
-        )
+
+        try:
+            self.upd_cdek_report_file(
+                self.report_file,
+                text_report_date,
+                excel_id_list,
+                excel_dc_id_list,
+            )
+
+            log_text = f'Данные в файле {self.report_file_name} успешно обновлены. (new)'
+            self.log_updater(log_text)
+
+        except Exception as ex:
+            log_text = ex
+            self.log_updater(log_text)
+
         return None
 
     def repeats_report_creation(
@@ -391,12 +424,12 @@ class MainProgram(QMainWindow):
 
                 # Очищаем повторяющиеся и неповторяющиеся ID и их количество.
                 self.clear_table(
-                    self.pe_repeats,
-                    self.le_repeats,
-                    self.pe_result,
-                    self.le_result,
-                    self.pe_track_id,
-                    self.le_track_id,
+                    self.pe_repeats_id,
+                    self.le_repeats_id,
+                    self.pe_result_id,
+                    self.le_result_id,
+                    self.pe_uploaded_track_id,
+                    self.le_uploaded_track_id,
                 )
 
         return None
@@ -439,16 +472,20 @@ class MainProgram(QMainWindow):
         """
         # Выводим повторяющиеся ID.
         repeats_text = calc.get_text(repeats_list, format_number)
-        self.complete_table(self.le_repeats, self.pe_repeats, repeats_text)
+        self.complete_table(
+            self.le_repeats_id, self.pe_repeats_id, repeats_text
+        )
 
         # Выводим ID без повторов.
         result_list = self.list_difference(excel_id_list, repeats_list)
         result_text = calc.get_text(result_list, format_number)
-        self.complete_table(self.le_result, self.pe_result, result_text)
+        self.complete_table(self.le_result_id, self.pe_result_id, result_text)
 
         # Заполняем таблицу "Трек-номера".
         dc_id_text = calc.get_text(track_id_without_repeats)
-        self.complete_table(self.le_track_id, self.pe_track_id, dc_id_text)
+        self.complete_table(
+            self.le_uploaded_track_id, self.pe_track_id, dc_id_text
+        )
 
         return None
 
