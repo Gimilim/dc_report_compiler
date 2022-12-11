@@ -109,10 +109,14 @@ class MainProgram(QMainWindow):
 
         self.pe_log = self.ui.pe_log
 
+        # Ситываем настройки.
         settings = self.read_settings()
         self.dir = settings.get('dir')
         self.report_file_name = settings.get('report_file_name')
         self.report_file = os.path.join(self.dir, self.report_file_name)
+
+        # На основе настроек создаем экземпляры классов для каждой ТК.
+        pass
 
         # Заполняем часть полей при запуске.
         self.first_load_setup()
@@ -127,7 +131,7 @@ class MainProgram(QMainWindow):
         # Получаем весь список ID из эксель таблицы.
         dc_data_dict = cd.cdek_get_id_list(selected_file)
         excel_id_list = dc_data_dict.get('id_list')
-        excel_dc_id_list = dc_data_dict.get('dc_id_list')
+        excel_track_id_list = dc_data_dict.get('track_id_list')
 
         # Заполняем дату отчета.
         excel_report_date = self.get_file_date(selected_file)
@@ -139,10 +143,18 @@ class MainProgram(QMainWindow):
         if self.ui.chb_id10.isChecked():
             format_number = 2
 
-        # Заполняем таблицу "Выгружено".
-        uplouded_text = calc.get_text(excel_id_list, format_number)
+        # Заполняем таблицу "ID".
+        uploaded_id_text = calc.get_text(excel_id_list, format_number)
         self.complete_table(
-            self.le_uploaded_id, self.pe_uploaded_id, uplouded_text
+            self.le_uploaded_id, self.pe_uploaded_id, uploaded_id_text
+        )
+
+        # Заполняем таблицу "Трек-ID"
+        uploaded_track_id_text = calc.get_text(excel_track_id_list)
+        self.complete_table(
+            self.le_uploaded_track_id,
+            self.pe_uploaded_track_id,
+            uploaded_track_id_text,
         )
 
         # Проверяем файл отчёта и выводим данные.
@@ -152,12 +164,12 @@ class MainProgram(QMainWindow):
             excel_report_date,
             format_number,
             selected_file,
-            excel_dc_id_list,
+            excel_track_id_list,
         )
 
         # test
         self.new_report_creation(
-            excel_report_date, excel_id_list, excel_dc_id_list
+            excel_report_date, excel_id_list, excel_track_id_list
         )
 
     def copy_field_text(self, field: QMainWindow) -> None:
@@ -229,7 +241,7 @@ class MainProgram(QMainWindow):
         """
         match self.ui.cb_tk.currentText():
             case 'CDEK':
-                pattern = "CDEK*.xlsx"
+                pattern = 'CDEK*.xlsx'
             case 'Shiptor':
                 pattern = 'Shiptor'
             case 'Boxberry':
@@ -301,7 +313,6 @@ class MainProgram(QMainWindow):
     ) -> None:
         """
         Create dc report func.
-        Где-то ошибка! Проверить!!!
         """
 
         # Проверяем есть ли в папке и если нет - создаем
@@ -321,8 +332,8 @@ class MainProgram(QMainWindow):
             file_date = self.string_to_date(str_file_date)
 
         # Проверяем дату в файле
-        if excel_report_date < file_date:
-            log_text = 'Данные в отчете устарели! (new)'
+        if excel_report_date <= file_date:
+            log_text = 'Данные в отчете устарели!'
             self.log_updater(log_text)
             return None
 
@@ -337,7 +348,9 @@ class MainProgram(QMainWindow):
                 excel_dc_id_list,
             )
 
-            log_text = f'Данные в файле {self.report_file_name} успешно обновлены. (new)'
+            log_text = (
+                f'Данные в файле {self.report_file_name} успешно обновлены.'
+            )
             self.log_updater(log_text)
 
         except Exception as ex:
@@ -581,6 +594,33 @@ class MainProgram(QMainWindow):
             base_settings = {
                 'dir': '.',
                 'report_file_name': 'sdek_report.json',
+                'TK': {
+                    'CDEK': {
+                        'pattern': '...',
+                        'id_colomn': '...',
+                        'track_id_colomn': '...',
+                    },
+                    'Shiptor': {
+                        'pattern': '...',
+                        'id_colomn': '...',
+                        'track_id_colomn': '...',
+                    },
+                    'Boxberry': {
+                        'pattern': '...',
+                        'id_colomn': '...',
+                        'track_id_colomn': '...',
+                    },
+                    'Grastin': {
+                        'pattern': '...',
+                        'id_colomn': '...',
+                        'track_id_colomn': '...',
+                    },
+                    '...': {
+                        'pattern': '...',
+                        'id_colomn': '...',
+                        'track_id_colomn': '...',
+                    },
+                },
             }
             json_data = json.dumps(base_settings, indent=2)
 
@@ -632,3 +672,4 @@ if __name__ == "__main__":
 # Печатать накладные ТК
 # Функцию считывания даты из названия файла впихнуть в класс ТК.
 # Добавить кнопку обновить файлы в комбо бокс (или оновлять их автоматически)
+# В конечном счете добавить sql базу данных (postgress) для доп практики

@@ -14,7 +14,7 @@ class read_excel_report:
         Возвращает словарь с внутренними ID и с трек-номерами ТК.
         """
         id_list = []
-        dc_id_list = []
+        track_id_list = []
 
         result_table = pd.read_excel(
             self.file_name,
@@ -32,18 +32,12 @@ class read_excel_report:
         # Формируем список ID из таблицы
         for element in data_list:
             if element[1] is not (None):
-                dc_id_list.append(element[0])
+                track_id_list.append(element[0])
                 if '00ФР' not in element[1]:
                     id_list.append(element[1])
 
-        result = {'id_list': id_list, 'dc_id_list': dc_id_list}
+        result = {'id_list': id_list, 'track_id_list': track_id_list}
         return result
-
-    def get_file_date() -> None:
-        """
-        Возвращает дату файла исходя из его названия.
-        """
-        return None
 
 
 def cdek_get_id_list(file_name: str) -> list:
@@ -70,7 +64,7 @@ def cdek_get_id_list(file_name: str) -> list:
             if '00ФР' not in element[1]:
                 id_list.append(element[1])
 
-    result_dict = {'dc_id_list': dc_id_list, 'id_list': id_list}
+    result_dict = {'track_id_list': dc_id_list, 'id_list': id_list}
 
     return result_dict
 
